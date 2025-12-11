@@ -98,10 +98,9 @@ jobs:
           
           # Output image URI for next job
           echo "image=$ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG" >> $GITHUB_OUTPUT
-          echo "IMAGE_URI=$ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG" >> $GITHUB_ENV
 
       - name: Output image URI
-        run: echo "Image pushed: ${{ env.IMAGE_URI }}"
+        run: echo "Image pushed: ${{ steps.build-image.outputs.image }}"
 
   # ===========================================================================
   # Job 3: Update Kubernetes Manifests
