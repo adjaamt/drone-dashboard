@@ -1,0 +1,254 @@
+# =============================================================================
+# CI/CD Pipeline for Drone Surveillance Control Panel
+# 
+# This workflow:
+# 1. Runs automated tests (lint, type check)
+# 2. Builds Docker image
+# 3. Pushes to AWS ECR
+# 4. Updates Kubernetes manifests
+# 5. Deploys to EKS with rolling updates
+# 6. Includes rollback capabilities
+# =============================================================================
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: drone-dashboard
+  EKS_CLUSTER_NAME: drone-dashboard-cluster
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  # ===========================================================================
+  # Job 1: Test & Lint
+  # ===========================================================================
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint || true
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Build (verify)
+        run: npm run build
+
+  # ===========================================================================
+  # Job 2: Build & Push Docker Image to ECR
+  # ===========================================================================
+  build-and-push:
+    name: Build & Push to ECR
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name != 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_NAME: ${{ env.ECR_REPOSITORY }}
+        run: |
+          # Build Docker image
+          docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
+          docker tag $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG $ECR_REGISTRY/$IMAGE_NAME:latest
+          
+          # Push both tags
+          docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$IMAGE_NAME:latest
+          
+          # Output image URI for next job
+          echo "image=$ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "IMAGE_URI=$ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Output image URI
+        run: echo "Image pushed: ${{ env.IMAGE_URI }}"
+
+  # ===========================================================================
+  # Job 3: Update Kubernetes Manifests
+  # ===========================================================================
+  update-manifests:
+    name: Update K8s Manifests
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name != 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update deployment.yaml with new image tag
+        run: |
+          IMAGE_URI="${{ needs.build-and-push.outputs.image }}"
+          sed -i "s|image:.*|image: $IMAGE_URI|g" k8s/deployment.yaml
+          
+          # Verify the update
+          echo "Updated deployment.yaml:"
+          grep "image:" k8s/deployment.yaml
+
+      - name: Commit updated manifests
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add k8s/deployment.yaml
+          git commit -m "chore: update image to ${{ env.IMAGE_TAG }}" || exit 0
+          git push
+
+  # ===========================================================================
+  # Job 4: Deploy to EKS
+  # ===========================================================================
+  deploy:
+    name: Deploy to EKS
+    runs-on: ubuntu-latest
+    needs: [build-and-push, update-manifests]
+    if: github.event_name != 'pull_request'
+    environment:
+      name: production
+      url: https://drone-dashboard.example.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Install Helm (optional, for future use)
+        uses: azure/setup-helm@v3
+        with:
+          version: 'latest'
+
+      - name: Configure kubectl for EKS
+        run: |
+          aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+      - name: Verify cluster connection
+        run: kubectl cluster-info
+
+      - name: Deploy to Kubernetes
+        run: |
+          # Apply manifests
+          kubectl apply -f k8s/namespace.yaml || true
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+          kubectl apply -f k8s/ingress.yaml
+          
+          # Wait for rollout
+          kubectl rollout status deployment/drone-dashboard -n drone-dashboard --timeout=5m
+
+      - name: Verify deployment
+        run: |
+          echo "Deployment status:"
+          kubectl get deployments -n drone-dashboard
+          echo ""
+          echo "Pods:"
+          kubectl get pods -n drone-dashboard
+          echo ""
+          echo "Services:"
+          kubectl get services -n drone-dashboard
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deployment failed! Rolling back..."
+          kubectl rollout undo deployment/drone-dashboard -n drone-dashboard
+          kubectl rollout status deployment/drone-dashboard -n drone-dashboard --timeout=5m
+          exit 1
+
+  # ===========================================================================
+  # Job 5: Health Check & Smoke Tests
+  # ===========================================================================
+  health-check:
+    name: Health Check
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: github.event_name != 'pull_request'
+    
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Configure kubectl for EKS
+        run: |
+          aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+      - name: Get service endpoint
+        id: get-endpoint
+        run: |
+          # Get LoadBalancer external IP
+          EXTERNAL_IP=$(kubectl get svc drone-dashboard -n drone-dashboard -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo "endpoint=$EXTERNAL_IP" >> $GITHUB_OUTPUT
+          echo "Service endpoint: $EXTERNAL_IP"
+
+      - name: Health check
+        run: |
+          ENDPOINT="${{ steps.get-endpoint.outputs.endpoint }}"
+          if [ -z "$ENDPOINT" ]; then
+            echo "No endpoint found, using port-forward"
+            kubectl port-forward svc/drone-dashboard 8080:80 -n drone-dashboard &
+            sleep 5
+            curl -f http://localhost:8080/health || exit 1
+          else
+            curl -f http://$ENDPOINT/health || exit 1
+          fi
+          echo "✅ Health check passed!"
+

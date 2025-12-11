@@ -1,0 +1,22 @@
+# =============================================================================
+# Rollback Script Helper
+# 
+# Usage:
+#   kubectl rollout undo deployment/drone-dashboard -n drone-dashboard
+#   kubectl rollout history deployment/drone-dashboard -n drone-dashboard
+# =============================================================================
+# This file documents rollback procedures
+# Actual rollback is done via kubectl commands
+
+# View deployment history
+# kubectl rollout history deployment/drone-dashboard -n drone-dashboard
+
+# Rollback to previous version
+# kubectl rollout undo deployment/drone-dashboard -n drone-dashboard
+
+# Rollback to specific revision
+# kubectl rollout undo deployment/drone-dashboard -n drone-dashboard --to-revision=2
+
+# Monitor rollback status
+# kubectl rollout status deployment/drone-dashboard -n drone-dashboard
+

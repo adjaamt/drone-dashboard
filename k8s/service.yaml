@@ -1,0 +1,28 @@
+# =============================================================================
+# Kubernetes Service
+# LoadBalancer for external access
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: drone-dashboard
+  namespace: drone-dashboard
+  labels:
+    app: drone-dashboard
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"  # Network Load Balancer
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+spec:
+  type: LoadBalancer
+  selector:
+    app: drone-dashboard
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+    protocol: TCP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+
