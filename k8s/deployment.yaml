@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
       - name: drone-dashboard
-        image: <IMAGE_PLACEHOLDER>  # Will be replaced by CI/CD pipeline
+        image: 
         imagePullPolicy: Always
         ports:
         - containerPort: 80
