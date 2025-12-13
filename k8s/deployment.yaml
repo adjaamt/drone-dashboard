@@ -1,4 +1,4 @@
-# =============================================================================
+﻿# =============================================================================
 # Kubernetes Deployment
 # Rolling Update Strategy with Health Checks
 # =============================================================================
@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
       - name: drone-dashboard
-        image: <IMAGE_PLACEHOLDER>  # Will be replaced by CI/CD pipeline
+        image: 905418403618.dkr.ecr.us-east-1.amazonaws.com/drone-dashboard:latest  # Will be replaced by CI/CD pipeline
         imagePullPolicy: Always
         ports:
         - containerPort: 80
@@ -63,9 +63,9 @@ spec:
         env:
         - name: NODE_ENV
           value: "production"
-      # Security context
+      # Security context - nginx needs to create temp directories
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 101  # nginx user
-        fsGroup: 101
+        runAsNonRoot: false
+        runAsUser: 0  # root user (required for nginx temp directories)
+        fsGroup: 0
 

@@ -21,8 +21,5 @@ spec:
     port: 80
     targetPort: 80
     protocol: TCP
-  sessionAffinity: ClientIP
-  sessionAffinityConfig:
-    clientIP:
-      timeoutSeconds: 10800
+  # Note: NLB doesn't support sessionAffinity, removed for compatibility
 

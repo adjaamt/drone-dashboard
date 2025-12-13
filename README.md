@@ -176,10 +176,12 @@ interface Telemetry {
 
 ## 📚 Documentation
 
+- **[Deployment Summary](docs/DEPLOYMENT_SUMMARY.md)** - ⭐ **Quick reference guide - START HERE**
 - **[Complete Project Journey](docs/COMPLETE_PROJECT_JOURNEY.md)** - ⭐ **Meticulous step-by-step guide of everything we built**
-- **[Project Structure](docs/PROJECT_STRUCTURE.md)** - Complete file structure explanation
 - **[Phase 1: Dockerization](docs/PHASE1_DOCKERIZATION.md)** - Docker setup guide
 - **[Phase 2: CI/CD Pipeline](docs/PHASE2_CI_CD.md)** - CI/CD to Kubernetes guide
+- **[Phase 3: EKS Deployment & Access](docs/PHASE3_EKS_DEPLOYMENT.md)** - ⭐ **How to deploy and access your dashboard**
+- **[Project Structure](docs/PROJECT_STRUCTURE.md)** - Complete file structure explanation
 
 ## 🔜 Roadmap
 
@@ -188,7 +190,8 @@ interface Telemetry {
 - [x] Dockerize application ✅
 - [x] CI/CD pipeline (GitHub Actions) ✅
 - [x] Kubernetes manifests ✅
-- [ ] AWS ECR & EKS setup
+- [x] AWS ECR setup ✅ (Working - Jobs 1-3 operational)
+- [ ] AWS EKS setup (Pending - Jobs 4-5 need cluster)
 - [ ] Real backend integration (MAVLink)
 
 ## 📦 Scripts
@@ -208,13 +211,15 @@ npm run lint     # Run ESLint
 - Optimized image size (~25MB)
 - Health check endpoints
 
-### ✅ Phase 2: CI/CD Pipeline (Complete)
-- GitHub Actions workflow
-- Automated testing (lint, type check)
-- Docker image build & push to ECR
-- Kubernetes manifest updates
-- Rolling updates with zero downtime
-- Automatic rollback on failure
+### ✅ Phase 2: CI/CD Pipeline (Partially Complete)
+- GitHub Actions workflow ✅
+- Automated testing (lint, type check) ✅ **WORKING**
+- Docker image build & push to ECR ✅ **WORKING**
+- Kubernetes manifest updates ✅ **WORKING**
+- ⏳ Rolling updates with zero downtime (Pending EKS)
+- ⏳ Automatic rollback on failure (Pending EKS)
+
+**Status**: Jobs 1-3 fully operational. Jobs 4-5 require EKS cluster.
 
 ### 📋 Phase 3: AWS Infrastructure Setup
 - ECR repository creation
