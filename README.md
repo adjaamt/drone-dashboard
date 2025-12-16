@@ -176,7 +176,8 @@ interface Telemetry {
 
 ## 📚 Documentation
 
-- **[Deployment Summary](docs/DEPLOYMENT_SUMMARY.md)** - ⭐ **Quick reference guide - START HERE**
+- **[Workflow Explanation](docs/WORKFLOW_EXPLANATION.md)** - ⭐ **PRESENTATION GUIDE - How everything works (simple explanation)**
+- **[Deployment Summary](docs/DEPLOYMENT_SUMMARY.md)** - ⭐ **Quick reference guide**
 - **[Complete Project Journey](docs/COMPLETE_PROJECT_JOURNEY.md)** - ⭐ **Meticulous step-by-step guide of everything we built**
 - **[Phase 1: Dockerization](docs/PHASE1_DOCKERIZATION.md)** - Docker setup guide
 - **[Phase 2: CI/CD Pipeline](docs/PHASE2_CI_CD.md)** - CI/CD to Kubernetes guide

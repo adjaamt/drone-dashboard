@@ -25,7 +25,6 @@ build
 
 # Documentation (not needed in production image)
 *.md
-docs/
 LICENSE
 
 # Test files
