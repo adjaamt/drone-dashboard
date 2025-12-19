@@ -15,7 +15,7 @@ export function useDynamoDB() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
+    let intervalId: ReturnType<typeof setInterval> | undefined;
     let isMounted = true;
 
     const pollTelemetry = async () => {
