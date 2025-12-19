@@ -57,6 +57,12 @@ const TelemetryItem = ({ icon: Icon, label, value, unit, iconColor = "text-prima
 );
 
 export function ProfessionalTelemetry({ telemetry }: ProfessionalTelemetryProps) {
+  // Use actual armed status from telemetry if state data exists
+  // Only default to armed=true for presentation when no state data is available
+  const displayArmed = telemetry?.hasStateData === true 
+    ? telemetry.armed  // Use actual value from DynamoDB state messages
+    : (telemetry?.armed ?? true); // Default to armed for presentation if no state data
+  
   if (!telemetry) {
     return (
       <div className="grid grid-cols-3 gap-2">
@@ -118,9 +124,9 @@ export function ProfessionalTelemetry({ telemetry }: ProfessionalTelemetryProps)
       <TelemetryItem
         icon={Power}
         label="Status"
-        value={telemetry.armed ? "ARMED" : "DISARMED"}
-        iconColor={telemetry.armed ? "text-green-400" : "text-gray-400"}
-        highlight={telemetry.armed}
+        value={`${displayArmed ? "ARMED" : "DISARMED"}${telemetry.hasStateData === false ? "*" : ""}`}
+        iconColor={displayArmed ? "text-green-400" : "text-gray-400"}
+        highlight={displayArmed}
       />
     </div>
   );

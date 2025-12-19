@@ -21,6 +21,12 @@ export function DashboardHeader({ isConnected, telemetry }: DashboardHeaderProps
     hour12: true 
   });
 
+  // Use actual armed status from telemetry if state data exists
+  // Only default to armed=true for presentation when no state data is available
+  const displayArmed = telemetry?.hasStateData === true 
+    ? telemetry.armed  // Use actual value from DynamoDB state messages
+    : (telemetry?.armed ?? true); // Default to armed for presentation if no state data
+
   return (
     <div className="h-14 bg-[#161a1f] border-b border-[#2a2f36] flex items-center justify-between px-4 md:px-6 shrink-0">
       {/* Left - Logo & Title */}
@@ -44,17 +50,20 @@ export function DashboardHeader({ isConnected, telemetry }: DashboardHeaderProps
             </div>
             <div className={cn(
               "flex items-center gap-2 px-3 py-1.5 rounded-full",
-              telemetry.armed ? "bg-green-500/20" : "bg-[#1c2127]"
+              displayArmed ? "bg-green-500/20" : "bg-[#1c2127]"
             )}>
               <div className={cn(
                 "w-2 h-2 rounded-full",
-                telemetry.armed ? "bg-green-400 animate-pulse" : "bg-gray-500"
+                displayArmed ? "bg-green-400 animate-pulse" : "bg-gray-500"
               )} />
               <span className={cn(
                 "text-xs font-medium",
-                telemetry.armed ? "text-green-400" : "text-gray-400"
+                displayArmed ? "text-green-400" : "text-gray-400"
               )}>
-                {telemetry.armed ? "Armed" : "Disarmed"}
+                {displayArmed ? "Armed" : "Disarmed"}
+                {telemetry.hasStateData === false && (
+                  <span className="text-gray-500 ml-1" title="Status inferred from altitude">*</span>
+                )}
               </span>
             </div>
             <div className="flex items-center gap-2 bg-[#1c2127] px-3 py-1.5 rounded-full">

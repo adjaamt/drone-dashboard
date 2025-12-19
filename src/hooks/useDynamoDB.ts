@@ -45,9 +45,9 @@ export function useDynamoDB() {
       }
     };
 
-    // Poll immediately, then every 2 seconds
+    // Poll immediately, then every 500ms (0.5 seconds) for near real-time updates
     pollTelemetry();
-    intervalId = setInterval(pollTelemetry, 2000);
+    intervalId = setInterval(pollTelemetry, 500);
 
     return () => {
       isMounted = false;

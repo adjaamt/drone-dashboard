@@ -20,6 +20,12 @@ export function FullScreenDashboard() {
     console.log('Command:', command, parameters);
   };
 
+  // Use actual armed status from telemetry if state data exists
+  // Only default to armed=true for presentation when no state data is available
+  const displayArmed = telemetry?.hasStateData === true 
+    ? telemetry.armed  // Use actual value from DynamoDB state messages
+    : (telemetry?.armed ?? true); // Default to armed for presentation if no state data
+
   const homePosition = telemetry
     ? { lat: telemetry.position.lat - 0.001, lon: telemetry.position.lon - 0.001 }
     : { lat: 37.7749, lon: -122.4194 };
@@ -58,7 +64,7 @@ export function FullScreenDashboard() {
                 <CircularCommandDial
                   onCommand={sendCommand}
                   isConnected={isConnected}
-                  isArmed={telemetry?.armed}
+                  isArmed={displayArmed}
                 />
               </div>
 

@@ -32,6 +32,7 @@ export interface Telemetry {
   battery: number; // percentage (0-100)
   flightMode: string;
   armed: boolean;
+  hasStateData?: boolean; // true if armed status comes from actual state message, false if inferred
   groundSpeed?: number; // calculated from velocity
   distanceFromHome?: number; // calculated distance
 }

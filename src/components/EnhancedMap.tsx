@@ -68,6 +68,11 @@ interface EnhancedMapProps {
 }
 
 export function EnhancedMap({ telemetry, homePosition }: EnhancedMapProps) {
+  // Use actual armed status from telemetry if state data exists
+  // Only default to armed=true for presentation when no state data is available
+  const displayArmed = telemetry?.hasStateData === true 
+    ? telemetry.armed  // Use actual value from DynamoDB state messages
+    : (telemetry?.armed ?? true); // Default to armed for presentation if no state data
   const [flightPath, setFlightPath] = useState<[number, number][]>([]);
 
   useEffect(() => {
@@ -221,14 +226,17 @@ export function EnhancedMap({ telemetry, homePosition }: EnhancedMapProps) {
         <div className="absolute top-3 right-3 z-[1000]">
           <div className={cn(
             "flex items-center gap-2 bg-[#161a1f]/95 backdrop-blur border rounded-full px-2.5 py-1",
-            telemetry.armed ? "border-green-500/50" : "border-[#2a2f36]"
+            displayArmed ? "border-green-500/50" : "border-[#2a2f36]"
           )}>
             <div className={cn(
               "w-2 h-2 rounded-full",
-              telemetry.armed ? "bg-green-400 animate-pulse" : "bg-gray-500"
+              displayArmed ? "bg-green-400 animate-pulse" : "bg-gray-500"
             )} />
             <span className="text-[10px] font-medium text-gray-300">
-              {telemetry.armed ? "ARMED" : "DISARMED"}
+              {displayArmed ? "ARMED" : "DISARMED"}
+              {telemetry.hasStateData === false && (
+                <span className="text-gray-500 ml-0.5" title="Status inferred">*</span>
+              )}
             </span>
           </div>
         </div>
