@@ -30,7 +30,9 @@
     "react-leaflet": "^5.0.0",
     "react-map-gl": "^7.1.7",
     "tailwind-merge": "^3.4.0",
-    "zustand": "^5.0.9"
+    "zustand": "^5.0.9",
+    "@aws-sdk/client-dynamodb": "^3.490.0",
+    "@aws-sdk/lib-dynamodb": "^3.490.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

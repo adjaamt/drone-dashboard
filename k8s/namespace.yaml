@@ -1,11 +1,10 @@
-# =============================================================================
-# Kubernetes Namespace
-# =============================================================================
+# Namespace - isolates our app from other stuff in the cluster
+# Think of it like a folder for all our resources
 apiVersion: v1
 kind: Namespace
 metadata:
   name: drone-dashboard
   labels:
     name: drone-dashboard
-    app: drone-dashboard
+    app: drone-dashboard  # Used for selecting resources
 

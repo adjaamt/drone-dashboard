@@ -5,7 +5,7 @@
  * Clean layout: Map left, telemetry + controls + alerts right.
  */
 
-import { useWebSocket } from '@/hooks/useWebSocket';
+import { useDynamoDB } from '@/hooks/useDynamoDB';
 import { ProfessionalTelemetry } from './ProfessionalTelemetry';
 import { EnhancedMap } from './EnhancedMap';
 import { CircularCommandDial } from './CircularCommandDial';
@@ -13,7 +13,12 @@ import { CompactAlerts } from './CompactAlerts';
 import { DashboardHeader } from './DashboardHeader';
 
 export function FullScreenDashboard() {
-  const { isConnected, telemetry, alerts, sendCommand } = useWebSocket();
+  const { isConnected, telemetry } = useDynamoDB();
+  const alerts: any[] = []; // Alerts can be added later
+  const sendCommand = async (command: string, parameters?: Record<string, any>) => {
+    // Command sending will be implemented later
+    console.log('Command:', command, parameters);
+  };
 
   const homePosition = telemetry
     ? { lat: telemetry.position.lat - 0.001, lon: telemetry.position.lon - 0.001 }

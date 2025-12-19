@@ -1,18 +1,17 @@
 # Drone Surveillance Control Panel
 
-A professional real-time drone surveillance dashboard built with React, TypeScript, and Tailwind CSS. Features satellite map view, circular command dial, and real-time telemetry monitoring.
-
-![Dashboard Preview](docs/preview.png)
+A professional real-time drone surveillance dashboard built with React, TypeScript, and Tailwind CSS. Features satellite map view, circular command dial, and real-time telemetry monitoring integrated with AWS DynamoDB.
 
 ## ✨ Features
 
 - **Satellite Map** - ESRI World Imagery with drone tracking, flight path, and compass
 - **Real-time Telemetry** - Speed, altitude, battery, flight mode, armed status
+- **AWS DynamoDB Integration** - Polls DynamoDB every 2 seconds for latest telemetry data
 - **Circular Command Dial** - Intuitive gamepad-style controls (ARM, DISARM, TAKEOFF, LAND, RTL, LOITER)
 - **Alert System** - Color-coded alerts (Critical, Warning, Info)
 - **Professional Dark Theme** - Charcoal background with orange accents
-- **Mock Data Mode** - Test without a real drone connection
-- **Dockerized** - Production-ready container image
+- **Cloud-Native** - Deployed on AWS EKS with automated CI/CD pipeline
+- **Dockerized** - Production-ready container image (~25MB)
 
 ## 🚀 Quick Start
 
@@ -56,6 +55,9 @@ docker run -p 3000:80 drone-dashboard:latest
 | Icons | Lucide React |
 | UI Components | shadcn/ui (Radix) |
 | Container | Docker (nginx:alpine) |
+| Cloud Database | AWS DynamoDB |
+| Cloud Infrastructure | AWS EKS, ECR, EC2, Load Balancer |
+| CI/CD | GitHub Actions |
 
 ## 📁 Project Structure
 
@@ -70,8 +72,10 @@ src/
 │   ├── DashboardHeader.tsx       # Top navigation
 │   └── ui/tooltip.tsx            # Tooltip component
 ├── hooks/
-│   └── useWebSocket.ts           # WebSocket state management
+│   ├── useDynamoDB.ts            # DynamoDB polling hook (current)
+│   └── useWebSocket.ts           # WebSocket state management (legacy)
 ├── services/
+│   ├── dynamodb.ts               # DynamoDB client & data transformation
 │   ├── mockWebSocket.ts          # Mock data generator
 │   ├── websocket.ts              # Real WebSocket client
 │   └── api.ts                    # REST API client
@@ -103,18 +107,25 @@ src/
 
 ### Environment Variables
 
-Create a `.env` file:
+Create a `.env` file for local development (this file is gitignored):
 
 ```env
-# Use mock data (true for development)
+# AWS Configuration
+VITE_AWS_REGION=us-east-1
+VITE_DYNAMODB_TABLE=drone-telemetry
+
+# AWS Credentials (for local development only)
+# In production (EKS), credentials come from IAM role automatically
+VITE_AWS_ACCESS_KEY_ID=your-access-key-id
+VITE_AWS_SECRET_ACCESS_KEY=your-secret-access-key
+
+# Legacy WebSocket (optional)
 VITE_USE_MOCK=true
-
-# WebSocket URL (when USE_MOCK=false)
 VITE_WS_URL=ws://localhost:8080
-
-# API URL (for REST endpoints)
 VITE_API_URL=http://localhost:8080/api
 ```
+
+**Important**: The `.env` file is gitignored and will NOT be committed to GitHub. For production (EKS), credentials are handled via IAM roles attached to the node group.
 
 ## 🐳 Docker
 
@@ -174,26 +185,17 @@ interface Telemetry {
 - `RTL` - Return to launch point
 - `LOITER` - Hold current position
 
-## 📚 Documentation
-
-- **[Workflow Explanation](docs/WORKFLOW_EXPLANATION.md)** - ⭐ **PRESENTATION GUIDE - How everything works (simple explanation)**
-- **[Deployment Summary](docs/DEPLOYMENT_SUMMARY.md)** - ⭐ **Quick reference guide**
-- **[Complete Project Journey](docs/COMPLETE_PROJECT_JOURNEY.md)** - ⭐ **Meticulous step-by-step guide of everything we built**
-- **[Phase 1: Dockerization](docs/PHASE1_DOCKERIZATION.md)** - Docker setup guide
-- **[Phase 2: CI/CD Pipeline](docs/PHASE2_CI_CD.md)** - CI/CD to Kubernetes guide
-- **[Phase 3: EKS Deployment & Access](docs/PHASE3_EKS_DEPLOYMENT.md)** - ⭐ **How to deploy and access your dashboard**
-- **[Project Structure](docs/PROJECT_STRUCTURE.md)** - Complete file structure explanation
-
 ## 🔜 Roadmap
 
 - [x] Frontend dashboard
 - [x] Mock data simulation
-- [x] Dockerize application ✅
-- [x] CI/CD pipeline (GitHub Actions) ✅
-- [x] Kubernetes manifests ✅
-- [x] AWS ECR setup ✅ (Working - Jobs 1-3 operational)
-- [ ] AWS EKS setup (Pending - Jobs 4-5 need cluster)
-- [ ] Real backend integration (MAVLink)
+- [x] Dockerize application 
+- [x] CI/CD pipeline (GitHub Actions) 
+- [x] Kubernetes manifests 
+- [x] AWS ECR setup 
+- [x] AWS EKS setup
+- [x] DynamoDB integration
+
 
 ## 📦 Scripts
 
@@ -212,23 +214,64 @@ npm run lint     # Run ESLint
 - Optimized image size (~25MB)
 - Health check endpoints
 
-### ✅ Phase 2: CI/CD Pipeline (Partially Complete)
+### ✅ Phase 2: CI/CD Pipeline (Complete)
 - GitHub Actions workflow ✅
-- Automated testing (lint, type check) ✅ **WORKING**
-- Docker image build & push to ECR ✅ **WORKING**
-- Kubernetes manifest updates ✅ **WORKING**
-- ⏳ Rolling updates with zero downtime (Pending EKS)
-- ⏳ Automatic rollback on failure (Pending EKS)
+- Automated testing (lint, type check) ✅
+- Docker image build & push to ECR ✅
+- Kubernetes manifest updates ✅
+- Rolling updates with zero downtime ✅
+- Automatic rollback on failure ✅
 
-**Status**: Jobs 1-3 fully operational. Jobs 4-5 require EKS cluster.
+### ✅ Phase 3: AWS Infrastructure (Complete)
+- ECR repository ✅
+- EKS cluster (2x t3.medium nodes) ✅
+- IAM roles & policies ✅
+- Network Load Balancer ✅
+- DynamoDB table setup ✅
 
-### 📋 Phase 3: AWS Infrastructure Setup
-- ECR repository creation
-- EKS cluster setup
-- IAM roles & policies
-- ALB Ingress Controller
-- SSL certificates (ACM)
+### ✅ Phase 4: Cloud Integration (Complete)
+- DynamoDB integration ✅
+- Frontend polling (2s interval) ✅
+- Data transformation from MAVLink message types (battery, altitude, state) ✅
+- Multi-message type handling (combines latest of each type) ✅
+- IAM permissions for EKS nodes ✅
+
+## 📡 Data Flow
+
+```
+PX4 Simulator (Local)
+    ↓ UDP Port 14550
+Node.js Bridge (Local)
+    ↓ Converts MAVLink → JSON
+    ↓ AWS SDK PutItem (battery, altitude, state messages)
+DynamoDB (AWS Cloud)
+    ↓ Poll every 2 seconds
+    ↓ Fetches latest of each message type
+React Frontend (EKS)
+    ↓ Combines messages into Telemetry object
+    ↓ Network Load Balancer
+End Users (Web Browser)
+```
+
+### DynamoDB Message Types
+
+The bridge sends three types of messages to DynamoDB:
+- **battery**: `{ type: "battery", remaining: 100, voltage: 16.2, load: 15.6 }`
+- **altitude**: `{ type: "altitude", relative: "1.25", amsl: "0.45" }`
+- **state**: `{ type: "state", armed: true, mode: 0 }`
+
+The frontend fetches the latest of each type and combines them into a single telemetry object.
+
+## ☁️ AWS Services Used
+
+- **EKS** - Kubernetes cluster for container orchestration
+- **ECR** - Container registry for Docker images
+- **DynamoDB** - NoSQL database for telemetry storage
+- **EC2** - Compute instances (t3.medium) for worker nodes
+- **Network Load Balancer** - Public access to the application
+- **IAM** - Access management and permissions
 
 ## 📄 License
 
 MIT
+

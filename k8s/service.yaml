@@ -10,16 +10,17 @@ metadata:
   labels:
     app: drone-dashboard
   annotations:
-    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"  # Network Load Balancer
-    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+    # Tell AWS to create a Network Load Balancer (not Classic)
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"  # Public, not internal
 spec:
-  type: LoadBalancer
+  type: LoadBalancer  # Creates an AWS LoadBalancer automatically
   selector:
-    app: drone-dashboard
+    app: drone-dashboard  # Routes traffic to pods with this label
   ports:
   - name: http
-    port: 80
-    targetPort: 80
+    port: 80  # External port
+    targetPort: 80  # Port on the pods
     protocol: TCP
-  # Note: NLB doesn't support sessionAffinity, removed for compatibility
+  # Note: NLB doesn't support sessionAffinity, so we removed it
 

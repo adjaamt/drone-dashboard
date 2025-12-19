@@ -1,14 +1,17 @@
-# Dependencies
+# Files to exclude from Docker build context
+# This makes builds faster and images smaller
+
+# Dependencies - we'll install these inside Docker
 node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Build output (we build inside Docker)
+# Build output - we build inside Docker, don't need this
 dist
 build
 
-# Development files
+# Development files - not needed in production
 .git
 .gitignore
 .env
@@ -23,11 +26,11 @@ build
 *.swo
 .DS_Store
 
-# Documentation (not needed in production image)
+# Documentation - saves space
 *.md
 LICENSE
 
-# Test files
+# Test files - don't need tests in production
 coverage/
 *.test.ts
 *.test.tsx
@@ -35,15 +38,15 @@ coverage/
 *.spec.tsx
 __tests__/
 
-# Docker files (prevent recursive copy)
+# Docker files - prevent recursive copy (would be weird)
 Dockerfile*
 docker-compose*
 .dockerignore
 
-# Kubernetes manifests
+# Kubernetes manifests - not needed in the image
 k8s/
 
-# CI/CD
+# CI/CD - not needed in image
 .github/
 
 # Misc

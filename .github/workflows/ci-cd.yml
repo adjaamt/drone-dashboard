@@ -50,13 +50,13 @@ jobs:
         run: npm ci
 
       - name: Run linter
-        run: npm run lint || true
+        run: npm run lint || true  # Don't fail if linting has warnings
 
       - name: Type check
-        run: npx tsc --noEmit
+        run: npx tsc --noEmit  # Check types without building
 
       - name: Build (verify)
-        run: npm run build
+        run: npm run build  # Make sure it actually builds
 
   # ===========================================================================
   # Job 2: Build & Push Docker Image to ECR
@@ -88,15 +88,16 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_NAME: ${{ env.ECR_REPOSITORY }}
         run: |
-          # Build Docker image
+          # Build the image with commit SHA as tag
           docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
+          # Also tag as 'latest' for convenience
           docker tag $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG $ECR_REGISTRY/$IMAGE_NAME:latest
           
-          # Push both tags
+          # Push both tags to ECR
           docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
           docker push $ECR_REGISTRY/$IMAGE_NAME:latest
           
-          # Output image URI for next job
+          # Save the image URI so next job can use it
           echo "image=$ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "Image pushed: $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG"
 
@@ -119,18 +120,21 @@ jobs:
 
       - name: Update deployment.yaml with new image tag
         run: |
+          # Replace the image line in deployment.yaml with the new image URI
           IMAGE_URI="${{ needs.build-and-push.outputs.image }}"
           sed -i "s|image:.*|image: $IMAGE_URI|g" k8s/deployment.yaml
           
-          # Verify the update
+          # Show what we changed
           echo "Updated deployment.yaml:"
           grep "image:" k8s/deployment.yaml
 
       - name: Commit updated manifests
         run: |
+          # Set git user for the commit
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add k8s/deployment.yaml
+          # Commit the change (|| exit 0 means don't fail if nothing changed)
           git commit -m "chore: update image to ${{ env.IMAGE_TAG }}" || exit 0
           git push
 
@@ -176,13 +180,13 @@ jobs:
 
       - name: Deploy to Kubernetes
         run: |
-          # Apply manifests
-          kubectl apply -f k8s/namespace.yaml || true
+          # Apply all the K8s manifests
+          kubectl apply -f k8s/namespace.yaml || true  # Namespace might already exist
           kubectl apply -f k8s/deployment.yaml
           kubectl apply -f k8s/service.yaml
           kubectl apply -f k8s/ingress.yaml
           
-          # Wait for rollout
+          # Wait for the rolling update to finish (max 5 minutes)
           kubectl rollout status deployment/drone-dashboard -n drone-dashboard --timeout=5m
 
       - name: Verify deployment
@@ -197,12 +201,13 @@ jobs:
           kubectl get services -n drone-dashboard
 
       - name: Rollback on failure
-        if: failure()
+        if: failure()  # Only run if previous step failed
         run: |
           echo "Deployment failed! Rolling back..."
+          # Undo the deployment - goes back to previous version
           kubectl rollout undo deployment/drone-dashboard -n drone-dashboard
           kubectl rollout status deployment/drone-dashboard -n drone-dashboard --timeout=5m
-          exit 1
+          exit 1  # Still fail the job so we know something went wrong
 
   # ===========================================================================
   # Job 5: Health Check & Smoke Tests
@@ -242,11 +247,13 @@ jobs:
         run: |
           ENDPOINT="${{ steps.get-endpoint.outputs.endpoint }}"
           if [ -z "$ENDPOINT" ]; then
+            # LoadBalancer might not be ready yet, use port-forward as fallback
             echo "No endpoint found, using port-forward"
             kubectl port-forward svc/drone-dashboard 8080:80 -n drone-dashboard &
-            sleep 5
+            sleep 5  # Give it a moment to start
             curl -f http://localhost:8080/health || exit 1
           else
+            # Use the LoadBalancer URL
             curl -f http://$ENDPOINT/health || exit 1
           fi
           echo "✅ Health check passed!"

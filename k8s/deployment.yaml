@@ -11,12 +11,12 @@ metadata:
     app: drone-dashboard
     version: v1
 spec:
-  replicas: 3
+  replicas: 3  # Run 3 copies of the app for high availability
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: 1          # Maximum pods that can be created above desired
-      maxUnavailable: 0    # Zero downtime - always have pods available
+      maxSurge: 1          # Can create 1 extra pod during update (so 4 total temporarily)
+      maxUnavailable: 0    # Never have 0 pods - ensures zero downtime
   selector:
     matchLabels:
       app: drone-dashboard
@@ -28,44 +28,47 @@ spec:
     spec:
       containers:
       - name: drone-dashboard
-        image: 905418403618.dkr.ecr.us-east-1.amazonaws.com/drone-dashboard:latest  # Will be replaced by CI/CD pipeline
-        imagePullPolicy: Always
+        image: 905418403618.dkr.ecr.us-east-1.amazonaws.com/drone-dashboard:latest  # CI/CD updates this automatically
+        imagePullPolicy: Always  # Always pull latest, don't use cached image
         ports:
         - containerPort: 80
           name: http
           protocol: TCP
-        # Health checks
+        # Health checks - K8s uses these to know if pod is healthy
         livenessProbe:
+          # If this fails, K8s restarts the pod
           httpGet:
             path: /health
             port: 80
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
+          initialDelaySeconds: 30  # Wait 30s before first check (let app start)
+          periodSeconds: 10  # Check every 10 seconds
+          timeoutSeconds: 5  # Timeout after 5s
+          failureThreshold: 3  # Restart after 3 failures
         readinessProbe:
+          # If this fails, K8s stops sending traffic (but doesn't restart)
           httpGet:
             path: /ready
             port: 80
-          initialDelaySeconds: 10
-          periodSeconds: 5
+          initialDelaySeconds: 10  # Check sooner than liveness
+          periodSeconds: 5  # Check more frequently
           timeoutSeconds: 3
           failureThreshold: 3
-        # Resource limits
+        # Resource limits - prevents one pod from hogging resources
         resources:
           requests:
-            memory: "64Mi"
-            cpu: "100m"
+            memory: "64Mi"  # Guaranteed minimum
+            cpu: "100m"  # 0.1 CPU cores
           limits:
-            memory: "128Mi"
-            cpu: "200m"
+            memory: "128Mi"  # Maximum allowed
+            cpu: "200m"  # 0.2 CPU cores max
         # Environment variables
         env:
         - name: NODE_ENV
           value: "production"
-      # Security context - nginx needs to create temp directories
+      # Security context - nginx needs root to create temp dirs
+      # In production you'd want to run as non-root, but nginx in alpine needs this
       securityContext:
         runAsNonRoot: false
-        runAsUser: 0  # root user (required for nginx temp directories)
+        runAsUser: 0  # Run as root (nginx requirement)
         fsGroup: 0
 
