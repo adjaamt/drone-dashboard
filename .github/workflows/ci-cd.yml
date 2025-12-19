@@ -87,9 +87,10 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_NAME: ${{ env.ECR_REPOSITORY }}
+          VITE_API_URL: https://wqqxp1o7e3.execute-api.us-east-1.amazonaws.com/prod/telemetry
         run: |
-          # Build the image with commit SHA as tag
-          docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
+          # Build the image with commit SHA as tag and API URL as build arg
+          docker build --build-arg VITE_API_URL=$VITE_API_URL -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
           # Also tag as 'latest' for convenience
           docker tag $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG $ECR_REGISTRY/$IMAGE_NAME:latest
           

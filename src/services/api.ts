@@ -1,63 +1,46 @@
 /**
  * API Service
  * 
- * Handles REST API calls to the backend for commands and other operations.
- * This will be used when the backend is available.
+ * Calls the Lambda/API Gateway endpoint instead of DynamoDB directly.
+ * This is the secure way to access DynamoDB from a browser application.
  */
 
-import type { Command, CommandAck } from '@/types/telemetry';
+import type { Telemetry } from '@/types/telemetry';
 
-const API_BASE_URL = import.meta.env.VITE_API_ENDPOINT || 'http://localhost:3000/api/v1';
+// API Gateway URL - set via environment variable or use default
+const API_URL = import.meta.env.VITE_API_URL || 'https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com/prod/telemetry';
 
-export async function sendCommand(
-  droneId: string,
-  command: string,
-  parameters?: Record<string, any>
-): Promise<CommandAck> {
+/**
+ * Get the latest telemetry from the API Gateway endpoint
+ */
+export async function getLatestTelemetry(): Promise<Telemetry | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/command`, {
-      method: 'POST',
+    const response = await fetch(API_URL, {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        droneId,
-        command,
-        parameters,
-      } as Command),
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
     }
 
-    return await response.json();
-  } catch (error) {
-    console.error('Error sending command:', error);
-    throw error;
-  }
-}
-
-export async function getTelemetryHistory(
-  droneId: string,
-  startTime?: number,
-  endTime?: number
-) {
-  try {
-    const params = new URLSearchParams({ droneId });
-    if (startTime) params.append('startTime', startTime.toString());
-    if (endTime) params.append('endTime', endTime.toString());
-
-    const response = await fetch(`${API_BASE_URL}/telemetry?${params}`);
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    const data = await response.json();
+    
+    // Log first successful fetch for debugging
+    if (!(window as any).__api_first_fetch) {
+      console.log('✅ Successfully fetched from API Gateway');
+      console.log('📊 Telemetry data:', data);
+      (window as any).__api_first_fetch = true;
     }
-
-    return await response.json();
+    
+    return data.telemetry || null;
   } catch (error) {
-    console.error('Error fetching telemetry history:', error);
-    throw error;
+    console.error('❌ Error fetching telemetry from API:', error);
+    if (error instanceof Error) {
+      console.error('Error details:', error.message);
+    }
+    return null;
   }
 }
-

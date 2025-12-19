@@ -1,12 +1,12 @@
 /**
  * useDynamoDB Hook
  * 
- * Custom React hook for polling telemetry from DynamoDB.
+ * Custom React hook for polling telemetry from API Gateway (which calls Lambda -> DynamoDB).
  * Polls every 2 seconds for latest telemetry data.
  */
 
 import { useEffect, useState } from 'react';
-import { getLatestTelemetry, transformMavlinkToTelemetry } from '@/services/dynamodb';
+import { getLatestTelemetry } from '@/services/api';
 import type { Telemetry } from '@/types/telemetry';
 
 export function useDynamoDB() {
@@ -20,18 +20,17 @@ export function useDynamoDB() {
 
     const pollTelemetry = async () => {
       try {
-        const items = await getLatestTelemetry();
+        const data = await getLatestTelemetry();
         
         if (!isMounted) return;
 
-        if (items && items.length > 0) {
-          // Transform multiple items (by type) into single Telemetry format
-          const transformed = transformMavlinkToTelemetry(items);
-          setTelemetry(transformed);
+        if (data) {
+          // API already returns transformed telemetry
+          setTelemetry(data);
           setIsConnected(true);
           setError(null);
         } else {
-          // No data yet, but connection is working (table exists, just empty)
+          // No data yet, but connection is working
           setIsConnected(true);
           setError(null);
           // Keep existing telemetry if available, don't clear it
@@ -42,7 +41,7 @@ export function useDynamoDB() {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         setError(errorMessage);
         setIsConnected(false);
-        console.error('Error polling DynamoDB:', err);
+        console.error('Error polling API:', err);
       }
     };
 
