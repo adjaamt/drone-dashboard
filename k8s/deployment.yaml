@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
       - name: drone-dashboard
-        image: 905418403618.dkr.ecr.us-east-1.amazonaws.com/drone-dashboard:latest  # CI/CD updates this automatically
+        image: 
         imagePullPolicy: Always  # Always pull latest, don't use cached image
         ports:
         - containerPort: 80
