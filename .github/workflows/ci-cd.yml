@@ -173,10 +173,15 @@ jobs:
 
       - name: Configure kubectl for EKS
         run: |
+          echo "Configuring kubectl for EKS cluster: ${{ env.EKS_CLUSTER_NAME }}"
           aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+          echo "kubectl configured successfully"
 
       - name: Verify cluster connection
-        run: kubectl cluster-info
+        run: |
+          echo "Verifying cluster connection..."
+          kubectl cluster-info
+          kubectl get nodes || echo "Warning: Could not list nodes"
 
       - name: Deploy to Kubernetes
         run: |
@@ -204,9 +209,11 @@ jobs:
         if: failure()  # Only run if previous step failed
         run: |
           echo "Deployment failed! Rolling back..."
+          # Re-configure kubectl in case connection was lost
+          aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
           # Undo the deployment - goes back to previous version
-          kubectl rollout undo deployment/drone-dashboard -n drone-dashboard
-          kubectl rollout status deployment/drone-dashboard -n drone-dashboard --timeout=5m
+          kubectl rollout undo deployment/drone-dashboard -n drone-dashboard || echo "Rollback command failed, deployment may not exist yet"
+          kubectl rollout status deployment/drone-dashboard -n drone-dashboard --timeout=5m || echo "Could not verify rollback status"
           exit 1  # Still fail the job so we know something went wrong
 
   # ===========================================================================
